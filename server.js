@@ -6,7 +6,7 @@ const app = express();
 const port = process.env.PORT || 10000;
 
 const token = '8818468854:AAEsiqfgCUgP2PgNdKPJywUnePSkmYwo-2g';
-const ADMIN_ID = 7838760702; // ⚠️ ЗАМЕНИ НА СВОЙ ЦИФРОВОЙ ТГ ID!
+const ADMIN_ID = 7838760702; // ⚠️ ПОДСТАВЬ СВОЙ ID!
 
 const bot = new TelegramBot(token, { polling: true });
 let memoryUsers = {};
@@ -14,26 +14,48 @@ let memoryUsers = {};
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// КНОПКА СТАРТА И МЕНЮ БОТА
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `👋 Привет! Добро пожаловать в наше NFT казино!\n\nИспользуй кнопку Меню, чтобы открыть игры.`, {
+  bot.sendMessage(chatId, `✨ Самый ахуенный NFT Stars Club!\n\nЖми Меню, чтобы открыть игры.`, {
     reply_markup: {
-      inline_keyboard: [[{ text: "🎮 Играть (Mini App)", web_app: { url: `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` } }]]
+      inline_keyboard: [[{ text: "🎮 Открыть Игры", web_app: { url: `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` } }]]
     }
   });
 });
 
-// АДМИН ПАНЕЛЬ
-bot.onText(/\/admin/, (msg) => {
-  if (msg.from.id !== ADMIN_ID) return;
-  bot.sendMessage(msg.chat.id, "🛠 Админка:\n\n/give ID СУММА — выдать баланс\n/msg ТЕКСТ — рассылка");
-});
-
-// ОБРАБОТКА ПОПОЛНЕНИЯ ИЗ MINI APP
 bot.on('web_app_data', async (msg) => {
   const chatId = msg.chat.id;
   try {
+    const data = JSON.parse(msg.web_app_data.data);
+    if (data.action === 'deposit') {
+      bot.sendInvoice(chatId, "💎 Пополнение", `Покупка ${data.amount} Stars`, "pay", "", "XTR", [{ label: "Оплата", amount: data.amount }]);
+    }
+  } catch (e) { console.log("Ошибка"); }
+});
+
+bot.on('successful_payment', (msg) => {
+  const chatId = msg.chat.id;
+  const amount = msg.successful_payment.total_amount;
+  if (!memoryUsers[chatId]) memoryUsers[chatId] = { balance: 500, inventory: [] };
+  memoryUsers[chatId].balance += amount;
+  bot.sendMessage(chatId, `🎉 Начислено +${amount} Stars!`);
+});
+
+app.get('/api/user/:id', (req, res) => {
+  const id = req.params.id;
+  if (!memoryUsers[id]) memoryUsers[id] = { balance: 500, inventory: [] };
+  res.json(memoryUsers[id]);
+});
+
+app.post('/api/user/:id/update', (req, res) => {
+  const id = req.params.id;
+  if (!memoryUsers[id]) memoryUsers[id] = { balance: 500, inventory: [] };
+  if (req.body.balance !== undefined) memoryUsers[id].balance = req.body.balance;
+  if (req.body.inventory !== undefined) memoryUsers[id].inventory = req.body.inventory;
+  res.json({ success: true });
+});
+
+app.listen(port, () => console.log(`Server live on ${port}`));
     const data = JSON.parse(msg.web_app_data.data);
     if (data.action === 'deposit') {
       bot.sendInvoice(chatId, "Пополнение баланса", `Покупка ${data.amount} Stars`, "payload", "", "XTR", [{ label: "Оплата", amount: data.amount }]);
