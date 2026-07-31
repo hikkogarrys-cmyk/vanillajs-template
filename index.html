@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Premium NFT Casino</title>
+  <script src="https://telegram.org"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #090714 0%, #110d24 100%);
+      color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    }
+    .game-container { width: 100%; max-width: 380px; box-sizing: border-box; }
+    
+    /* СТИЛЬ ЖИДКОЕ СТЕКЛО */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 16px; margin-bottom: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+    
+    /* ПРОФИЛЬ */
+    .profile { display: flex; align-items: center; margin-bottom: 12px; }
+    .avatar { width: 44px; height: 44px; border-radius: 50%; background: #248bcf; background-size: cover; border: 2px solid rgba(255,255,255,0.15); margin-right: 12px; }
+    .name h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .name p { margin: 0; font-size: 11px; color: #7b7593; }
+    .balance-badge { display: flex; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 10px 16px; border-radius: 14px; font-size: 15px; font-weight: bold; }
+    .star { color: #fcc419; margin-right: 4px; }
+
+    /* КЕЙСЫ И РУЛЕТКА */
+    .roulette { position: relative; width: 100%; height: 90px; background: rgba(0, 0, 0, 0.3); border-radius: 16px; overflow: hidden; margin: 15px 0; border: 1px solid rgba(255,255,255,0.05); }
+    .pointer { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 3px; height: 100%; background: #ff4b72; z-index: 5; box-shadow: 0 0 10px #ff4b72; }
+    .tape { display: flex; width: max-content; height: 100%; transition: transform 0s; }
+    .card { width: 90px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; border-right: 1px solid rgba(255,255,255,0.05); }
+    .card img { width: 40px; height: 40px; margin-bottom: 4px; border-radius: 8px; }
+
+    /* КНОПКИ */
+    .btn { background: linear-gradient(90deg, #248bcf, #1a6fa7); color: #fff; border: none; padding: 14px; font-size: 15px; font-weight: bold; border-radius: 14px; width: 100%; cursor: pointer; box-shadow: 0 4px 15px rgba(36, 139, 207, 0.3); }
+    .btn:active { transform: scale(0.98); }
+
+    /* ИГРА МИНЫ */
+    .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 15px 0; }
+    .cell { aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
+
+    /* ПОПОЛНЕНИЕ */
+    .deposit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .dep-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    
+    <!-- ПРОФИЛЬ -->
+    <div class="glass-card">
+      <div class="profile">
+        <div class="avatar" id="avatar"></div>
+        <div class="name"><h2 id="username">Загрузка...</h2><p>💎 VIP Игрок</p></div>
+      </div>
+      <div class="balance-badge"><span>Твой Баланс:</span><div><span class="star">⭐</span><span id="balance">...</span></div></div>
+    </div>
+
+    <!-- ИГРА КЕЙСЫ -->
+    <div class="glass-card">
+      <h3>🎁 NFT Кейс</h3>
+      <div class="roulette">
+        <div class="pointer"></div>
+        <div class="tape" id="tape">
+          <div class="card"><img src="https://postimg.cc">Duck NFT</div>
+          <div class="card"><img src="https://postimg.cc">Star NFT</div>
+          <div class="card"><img src="https://postimg.cc">Rolex NFT</div>
+          <div class="card"><img src="https://postimg.cc">King NFT</div>
+        </div>
+      </div>
+      <button class="btn" id="spin-btn">Открыть за 100 ⭐</button>
+    </div>
+
+    <!-- ИГРА МИНЫ -->
+    <div class="glass-card">
+      <h3>💣 Игра Мины</h3>
+      <div class="mines-grid" id="mines-grid"></div>
+      <button class="btn" id="start-mines-btn" style="background: linear-gradient(90deg, #e53e3e, #9b2c2c);">Начать игру (50 ⭐)</button>
+    </div>
+
+    <!-- ПОПОЛНЕНИЕ БАЛАНСА -->
+    <div class="glass-card">
+      <h3>⚡ Быстрое Пополнение</h3>
+      <div class="deposit-grid">
+        <button class="dep-btn" onclick="deposit(50)">➕ 50 Stars</button>
+        <button class="dep-btn" onclick="deposit(100)">➕ 100 Stars</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    let userId = 12345;
+    if (tg) { 
+      tg.ready(); 
+      tg.expand(); 
+      if (tg.initDataUnsafe?.user) { 
+        userId = tg.initDataUnsafe.user.id; 
+        document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name; 
+        if (tg.initDataUnsafe.user.photo_url) document.getElementById('avatar').style.backgroundImage = `url(${tg.initDataUnsafe.user.photo_url})`; 
+      } 
+    }
+
+    async function loadData() { 
+      try { 
+        const r = await fetch(`/api/user/${userId}`); 
+        const d = await r.json(); 
+        document.getElementById('balance').innerText = d.balance; 
+      } catch { 
+        document.getElementById('balance').innerText = "100"; 
+      } 
+    }
+    loadData();
+
+    // Логика кейсов
+    document.getElementById('spin-btn').onclick = async () => {
+      const tape = document.getElementById('tape');
+      tape.style.transition = 'transform 2s cubic-bezier(0.1, 0.8, 0.1, 1)';
+      const offset = Math.floor(Math.random() * 4) * -90;
+      tape.style.transform = `translateX(${offset}px)`;
+      setTimeout(() => { alert("Вы выиграли NFT!"); tape.style.transition = 'none'; tape.style.transform = 'translateX(0)'; loadData(); }, 2100);
+    };
+
+    // Отрендерить сетку мин
+    const grid = document.getElementById('mines-grid');
+    for(let i=0; i<25; i++) { const c = document.createElement('div'); c.className = 'cell'; c.innerText = '❓'; grid.appendChild(c); }
+
+    function deposit(amount) { 
+      if (tg) { 
+        tg.sendData(JSON.stringify({ action: "deposit", amount })); 
+        tg.close(); 
+      } else { 
+        alert(`Счет на ${amount} звезд отправлен в бота!`); 
+      } 
+    }
+  </script>
+</body>
+</html>
+ 
