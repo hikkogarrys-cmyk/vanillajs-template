@@ -1,9 +1,9 @@
 const tg = window.Telegram?.WebApp;
-let userId = 12345; // Дефолтный ID для тестов в браузере
+let userId = 12345; // Дефолтный ID для тестов в обычном браузере
 
 if (tg) {
   tg.ready();
-  tg.expand();
+  tg.expand(); // Разворачиваем Mini App на весь экран телефона
   
   // Вытаскиваем настоящие данные профиля из Телеграма
   if (tg.initDataUnsafe?.user) {
@@ -20,20 +20,60 @@ const tape = document.getElementById('case-tape');
 const balanceHtml = document.getElementById('balance-value');
 const inventoryHtml = document.getElementById('inventory-list');
 
-// ЗАПРОС НАСТОЯЩЕГО БАЛАНСА С СЕРВЕРА
+// ЗАПРОС НАСТОЯЩЕГО БАЛАНСА С СЕРВЕРА С РЕНДЕРА
 async function loadUserData() {
   try {
     const res = await fetch(`/api/user/${userId}`);
     const data = await res.json();
     balanceHtml.innerText = data.balance;
   } catch (err) {
-    balanceHtml.innerText = "0";
+    balanceHtml.innerText = "100"; // Если сервер спит, выдаем 100 для визуала
   }
 }
 
 loadUserData();
 
 const items = [
+  { name: '🎁 Common NFT', class: 'common' },
+  { name: '💎 Rare Code', class: 'rare' },
+  { name: '🔥 Epic NFT', class: 'epic' },
+  { name: '👑 ЛЕГЕНДА', class: 'legendary' }
+];
+
+spinBtn.addEventListener('click', async () => {
+  let currentBalance = parseInt(balanceHtml.innerText);
+  if (currentBalance < 100) {
+    alert('Недостаточно Stars! Пополни баланс в боте.');
+    return;
+  }
+
+  spinBtn.disabled = true;
+
+  // Плавное кручение рулетки по нашей новой разметке (сдвиг по 90px)
+  tape.style.transition = 'transform 2.5s cubic-bezier(0.1, 0.8, 0.1, 1)';
+  const randomOffset = Math.floor(Math.random() * 4) * -90; 
+  tape.style.transform = `translateX(${randomOffset}px)`;
+
+  setTimeout(() => {
+    const prize = items[Math.abs(randomOffset / 90)];
+    
+    const emptyText = inventoryHtml.querySelector('.empty-text');
+    if (emptyText) emptyText.remove();
+
+    const newGift = document.createElement('div');
+    newGift.className = `inventory-item ${prize.class}`;
+    newGift.innerText = prize.name;
+    inventoryHtml.appendChild(newGift);
+
+    // Списание баланса на экране после выигрыша
+    balanceHtml.innerText = currentBalance - 100;
+
+    // Мгновенный сброс ленты для следующего кручения
+    tape.style.transition = 'none';
+    tape.style.transform = 'translateX(0)';
+    spinBtn.disabled = false;
+  }, 2600);
+});
   { name: '🎁 Common NFT', class: 'common' },
   { name: '💎 Rare Code', class: 'rare' },
   { name: '🔥 Epic NFT', class: 'epic' },
