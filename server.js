@@ -3,37 +3,39 @@ const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 
-// Твой токен бота и ID админа (замени на свой ТГ ID)
-const token = process.env.BOT_TOKEN || '8818468854:AAG_BjNvYddzVo-uD94F8E7fO_ZiRwG6yYY';
-const ADMIN_ID = 111111111; // ПОДСТАВЬ СВОЙ ЦИФРОВОЙ ID ИЗ ТЕЛЕГРАМА!
-
+const token = '8818468854:AAG_BjNvYddzVo-uD94F8E7fO_ZiRwG6yYY';
 const bot = new TelegramBot(token, { polling: true });
+
 app.use(express.json());
+// Отдаем файлы напрямую из папки dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Временная база данных в памяти сервера
 let users = {}; 
-let gifts = ['🎁 Обычный NFT', '💎 Редкий Код', '🔥 Эпик Скин', '👑 ЛЕГЕНДА'];
 
-// 1. ПРИЕМ ОПЛАТЫ ЧЕРЕЗ TELEGRAM STARS
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  if (!users[chatId]) users[chatId] = { balance: 100, inventory: [] };
+  if (!users[chatId]) users[chatId] = { balance: 1000, inventory: [] };
 
   bot.sendMessage(chatId, `👋 Привет! Добро пожаловать в NFT Stars Casino!\n💰 Твой баланс: ${users[chatId].balance} Stars.`, {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "🎮 Открыть Игры (Mini App)", web_app: { url: process.env.APP_URL || `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` } }],
+        [{ text: "🎮 Открыть Игры (Mini App)", web_app: { url: `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` } }],
         [{ text: "⚡ Пополнить на 50 Stars", callback_data: "buy_50" }]
       ]
     }
   });
 });
 
-// Выставление счета на Stars
-bot.on('callback_query', (query) => {
+// Отдача живого баланса на сайт
+app.get('/api/user/:id', (req, res) => {
+  const id = req.params.id;
+  if (!users[id]) users[id] = { balance: 1000, inventory: [] };
+  res.json(users[id]);
+});
+
+app.listen(port, () => console.log(`Server running on port ${port}`));
   const chatId = query.message.chat.id;
   if (query.data === 'buy_50') {
     bot.sendInvoice(
