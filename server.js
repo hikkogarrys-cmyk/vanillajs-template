@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 10000;
 
-const token = '8818468854:AAG_BjNvYddzVo-uD94F8E7fO_ZiRwG6yYY';
+const token = '8818468854:AAEsiqfgCUgP2PgNdKPJywUnePSkmYwo-2g';
 const ADMIN_ID = 7838760702; // ⚠️ ЗАМЕНИ НА СВОЙ ЦИФРОВОЙ ТГ ID!
 
 const bot = new TelegramBot(token, { polling: true });
