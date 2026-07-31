@@ -1,39 +1,123 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
+const { MongoClient } = require('mongodb');
 const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 10000;
 
-const token = '8818468854:AAG_BjNvYddzVo-uD94F8E7fO_ZiRwG6yYY';
+const token = process.env.BOT_TOKEN || '8818468854:AAG_BjNvYddzVo-uD94F8E7fO_ZiRwG6yYY';
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/casino'; 
+const ADMIN_ID = 7838760702; // ПОДСТАВЬ СВОЙ ID ИЗ ТГ!
+
 const bot = new TelegramBot(token, { polling: true });
+let db;
 
 app.use(express.json());
-// Отдаем файлы напрямую из папки dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-let users = {}; 
+async function initDb() {
+  try {
+    const client = new MongoClient(mongoUri);
+    await client.connect();
+    db = client.db('casino_database');
+    console.log('🚀 Успешно подключено к базе данных MongoDB!');
+  } catch (err) {
+    console.error('❌ Ошибка подключения к MongoDB:', err);
+  }
+}
+initDb();
 
-bot.onText(/\/start/, (msg) => {
+const caseItems = [
+  { id: 1, name: 'Cyber Punk Duck', type: 'common', img: 'https://postimg.cc' },
+  { id: 2, name: 'Diamond Star NFT', type: 'rare', img: 'https://postimg.cc' },
+  { id: 3, name: 'Golden Rolex NFT', type: 'epic', img: 'https://postimg.cc' },
+  { id: 4, name: 'TON Crypto King', type: 'legendary', img: 'https://postimg.cc' }
+];
+
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  if (!users[chatId]) users[chatId] = { balance: 1000, inventory: [] };
+  const username = msg.from.username || msg.from.first_name;
 
-  bot.sendMessage(chatId, `👋 Привет! Добро пожаловать в NFT Stars Casino!\n💰 Твой баланс: ${users[chatId].balance} Stars.`, {
+  let user = await db.collection('users').findOne({ _id: chatId });
+  if (!user) {
+    user = { _id: chatId, username, balance: 200, inventory: [] };
+    await db.collection('users').insertOne(user);
+  }
+
+  bot.sendMessage(chatId, `✨ Добро пожаловать в премиальный NFT Stars Club, @${username}!\n\n💰 Твой баланс защищен и сохранен: ${user.balance} Stars.`, {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "🎮 Открыть Игры (Mini App)", web_app: { url: `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` } }],
-        [{ text: "⚡ Пополнить на 50 Stars", callback_data: "buy_50" }]
+        [{ text: "🎮 Открыть Кейсы (Glass NFT App)", web_app: { url: `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` } }],
+        [{ text: "💎 Купить 100 Stars (Оплата ТГ)", callback_data: "deposit_100" }]
       ]
     }
   });
 });
 
-// Отдача живого баланса на сайт
-app.get('/api/user/:id', (req, res) => {
-  const id = req.params.id;
-  if (!users[id]) users[id] = { balance: 1000, inventory: [] };
-  res.json(users[id]);
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  if (query.data === 'deposit_100') {
+    await bot.sendInvoice(
+      chatId, "Пополнение баланса", "Покупка 100 игровых Stars для открытия NFT кейсов", 
+      "stars_payload", "", "XTR", [{ label: "100 Stars", amount: 100 }]
+    );
+  }
 });
+
+bot.on('successful_payment', async (msg) => {
+  const chatId = msg.chat.id;
+  const amount = msg.successful_payment.total_amount;
+  await db.collection('users').updateOne({ _id: chatId }, { $inc: { balance: amount } });
+  bot.sendMessage(chatId, `🎉 Отлично! Реальный платеж получен. Вам начислено +${amount} Stars в базу данных.`);
+});
+
+bot.onText(/\/admin/, (msg) => {
+  if (msg.from.id !== ADMIN_ID) return;
+  bot.sendMessage(msg.chat.id, "🛠 Мощная Админ-Панель сервера:", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📢 Сделать рассылку по всей базе", callback_data: "adm_news" }],
+        [{ text: "🎁 Выдать 1,000 Stars всем игрокам", callback_data: "adm_gift_all" }]
+      ]
+    }
+  });
+});
+
+bot.on('callback_query', async (query) => {
+  if (query.from.id !== ADMIN_ID) return;
+  if (query.data === 'adm_gift_all') {
+    await db.collection('users').updateMany({}, { $inc: { balance: 1000 } });
+    bot.answerCallbackQuery(query.id, { text: "1000 Stars успешно начислены всем пользователям из MongoDB!" });
+  }
+});
+
+app.get('/api/user/:id', async (req, res) => {
+  const userId = parseInt(req.params.id);
+  let user = await db.collection('users').findOne({ _id: userId });
+  if (!user) user = { _id: userId, balance: 0, inventory: [] };
+  res.json(user);
+});
+
+app.post('/api/spin', async (req, res) => {
+  const { userId } = req.body;
+  const user = await db.collection('users').findOne({ _id: parseInt(userId) });
+  if (!user || user.balance < 100) return res.status(400).json({ error: "Недостаточно Stars!" });
+  
+  const randomIndex = Math.floor(Math.random() * caseItems.length);
+  const prize = caseItems[randomIndex];
+  
+  await db.collection('users').updateOne(
+    { _id: parseInt(userId) },
+    { 
+      $inc: { balance: -100 },
+      $push: { inventory: { id: Date.now(), name: prize.name, type: prize.type, img: prize.img } }
+    }
+  );
+  res.json({ prize, index: randomIndex });
+});
+
+app.listen(port, () => console.log(`Casino Core Server active on port ${port}`));
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
   const chatId = query.message.chat.id;
