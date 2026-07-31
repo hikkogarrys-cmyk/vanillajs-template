@@ -1,21 +1,13 @@
 {
-  "name": "vanillajs-template",
-  "description": "Telegram Mini Apps application template using JavaScript.",
-  "private": true,
-  "version": "0.0.1",
-  "main": "index.html",
-  "homepage": "https://telegram-mini-apps.github.io/vanillajs-template",
+  "name": "stars-casino-bot",
+  "version": "1.0.0",
+  "description": "Telegram Mini App Casino",
+  "main": "server.js",
   "scripts": {
-    "deploy": "gh-pages -d dist",
-    "serve": "serve ./dist",
-    "tunnel": "lt --port 3000"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "Vladislav Kibenko",
-  "license": "MIT",
-  "devDependencies": {
-    "gh-pages": "^6.1.1",
-    "localtunnel": "^2.0.2",
-    "serve": "^14.2.1"
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-telegram-bot-api": "^0.66.0"
   }
 }
