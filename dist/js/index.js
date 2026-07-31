@@ -1,39 +1,54 @@
-(function() {
-  // Uncomment next line for local development outside Telegram Mini App
-  mockEnv();
+// Старт Telegram SDK
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+}
 
-  var launchParams = window.telegramApps.sdk.retrieveLaunchParams();
+const spinBtn = document.getElementById('spin-button');
+const tape = document.getElementById('case-tape');
+const balanceHtml = document.getElementById('balance-value');
+const inventoryHtml = document.getElementById('inventory-list');
 
-  // Launch eruda and enable SDK debug mode, if debug mode was requested outside.
-  var debug = launchParams.startParam === 'debug';
-  if (debug) {
-    window.telegramApps.sdk.setDebug(debug);
+let balance = 1000;
+const items = [
+  { name: '🎁 Обычный NFT', class: 'common' },
+  { name: '💎 Редкий Код', class: 'rare' },
+  { name: '🔥 Эпик Скин', class: 'epic' },
+  { name: '👑 ЛЕГЕНДА', class: 'legendary' }
+];
+
+spinBtn.addEventListener('click', () => {
+  if (balance < 100) {
+    alert('Недостаточно Stars!');
+    return;
   }
 
-  // The web version of Telegram is capable of sending some specific CSS styles we would
-  // like to catch.
-  if (window.telegramApps.sdk.isIframe()) {
-    window.telegramApps.sdk.initWeb(true);
-  }
+  balance -= 100;
+  balanceHtml.innerText = balance;
+  spinBtn.disabled = true;
 
-  initComponents().then(function(components) {
-    var miniApp = components.miniApp;
-    var viewport = components.viewport;
-    var utils = components.utils;
-    var themeParams = components.themeParams;
-    var initData = components.initData;
+  // Анимация рулетки
+  tape.style.transition = 'transform 2.5s cubic-bezier(0.1, 0.8, 0.1, 1)';
+  const randomOffset = Math.floor(Math.random() * 4) * -80; 
+  tape.style.transform = `translateX(${randomOffset}px)`;
 
-    initNavigator().then(function(navigator) {
-      var tonConnectUI = initTonConnectUI();
+  setTimeout(() => {
+    const prize = items[Math.abs(randomOffset / 80)];
+    
+    const emptyText = inventoryHtml.querySelector('.empty-text');
+    if (emptyText) emptyText.remove();
 
-      var routes = [
-        { pathname: '/', Page: HomePage },
-        { pathname: '/init-data', Page: InitDataPage, title: 'Init Data' },
-        { pathname: '/theme-params', Page: ThemeParamsPage, title: 'Theme Params' },
-        { pathname: '/launch-params', Page: LaunchParamsPage, title: 'Launch Params' },
-        {
-          pathname: '/ton-connect',
-          Page: TonConnectPage,
+    const newGift = document.createElement('div');
+    newGift.className = `inventory-item ${prize.class}`;
+    newGift.innerText = prize.name;
+    inventoryHtml.appendChild(newGift);
+
+    tape.style.transition = 'none';
+    tape.style.transform = 'translateX(0)';
+    spinBtn.disabled = false;
+  }, 2600);
+});
           title: 'TON Connect',
           icon: window.location.origin + window.location.pathname + 'ton.svg'
         },
